@@ -608,7 +608,7 @@
     }
 
     .tip {
-      margin-top: 16px;
+      margin-bottom: 16px;
       border: 1px solid rgba(0, 155, 132, 0.2);
       border-radius: 8px;
       padding: 16px;
@@ -616,6 +616,13 @@
       color: #17433a;
       font-weight: 850;
       box-shadow: 0 18px 44px rgba(0, 155, 132, 0.08);
+    }
+
+    .tip strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--ink);
+      font-size: 18px;
     }
 
     @media (max-width: 980px) {
@@ -696,6 +703,7 @@
     </section>
 
     <p class="summary" id="summary"></p>
+    <p class="tip"><strong>Viva Explanation</strong>DNS resolves the domain name into an IP address on port 53. After that, the client starts a TCP 3-way handshake on port 443, and then the HTTPS request is ready.</p>
     <section class="comparison-grid" id="comparisonGrid" aria-label="DNS comparison results"></section>
 
     <section class="stage">
@@ -739,7 +747,6 @@
       </table>
     </div>
 
-    <p class="tip">Viva tip: DNS uses port 53 to resolve a domain into an IP address. HTTPS commonly uses TCP port 443 after the TCP 3-way handshake.</p>
   </main>
 
   <script>
