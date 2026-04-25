@@ -22,7 +22,7 @@ Protocol: TCP | Port: 443 | Status: SYN
 - Shows DNS query and DNS response packets.
 - Simulates the TCP 3-way handshake: SYN, SYN-ACK, ACK.
 - Shows HTTPS connection setup on port 443.
-- Includes browser UI, local DNS API mode, optional Tkinter GUI mode, and CLI mode.
+- Includes browser UI with live DNS lookup support, optional Tkinter GUI mode, and CLI mode.
 - Uses only Python standard library modules.
 
 ## How To Run
@@ -47,7 +47,7 @@ You can still open the static browser file:
 open index.html
 ```
 
-But static browser mode cannot do live DNS by itself. It uses demo fallback IP values if the local Python server is not running.
+Static browser mode cannot do live DNS by itself. For actual DNS lookup, run `python3 app.py --web` and open the local server URL.
 
 CLI mode:
 

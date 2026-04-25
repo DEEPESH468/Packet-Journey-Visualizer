@@ -283,7 +283,7 @@
       border-color: rgba(0, 155, 132, 0.36);
     }
 
-    .comparison-card.demo {
+    .comparison-card.error {
       border-color: rgba(255, 107, 87, 0.32);
     }
 
@@ -691,7 +691,7 @@
 
     <section class="control-strip" aria-label="Simulation controls">
       <label for="domain">Domains</label>
-      <input id="domain" value="google.com, github.com" autocomplete="off" spellcheck="false">
+      <input id="domain" value="google.com" autocomplete="off" spellcheck="false">
       <button id="simulate">Run Simulation</button>
     </section>
 
@@ -745,15 +745,6 @@
   <script>
     const CLIENT_IP = "192.168.1.100";
     const DNS_SERVER_IP = "8.8.8.8";
-    const FALLBACK_IPS = {
-      "google.com": "142.250.185.46",
-      "www.google.com": "142.250.185.46",
-      "example.com": "93.184.216.34",
-      "github.com": "140.82.112.3",
-      "openai.com": "104.18.33.45",
-      "youtube.com": "142.250.185.46"
-    };
-
     let activePacketKey = "";
     let currentPackets = [];
     let currentResults = [];
@@ -791,19 +782,6 @@
       return [...new Set(domains)].slice(0, 6);
     }
 
-    function demoIpForDomain(domain) {
-      const knownIp = FALLBACK_IPS[domain.toLowerCase()];
-      if (knownIp) {
-        return knownIp;
-      }
-
-      let hash = 0;
-      for (const character of domain) {
-        hash = (hash * 31 + character.charCodeAt(0)) % 250;
-      }
-      return `203.0.113.${hash + 1}`;
-    }
-
     function buildPackets(domain, serverIp) {
       return [
         { number: 1, source: CLIENT_IP, destination: DNS_SERVER_IP, protocol: "DNS", port: 53, status: "Query", payload: `Client asks DNS server for ${domain}` },
@@ -813,21 +791,6 @@
         { number: 5, source: CLIENT_IP, destination: serverIp, protocol: "TCP", port: 443, status: "ACK", payload: "Client acknowledges the server response" },
         { number: 6, source: CLIENT_IP, destination: serverIp, protocol: "HTTPS", port: 443, status: "Secure Request", payload: `Browser is ready to request https://${domain}` }
       ];
-    }
-
-    function buildDemoResults(domains) {
-      return domains.map((domain) => {
-        const ip = demoIpForDomain(domain);
-        return {
-          domain,
-          ip,
-          isLive: false,
-          note: FALLBACK_IPS[domain.toLowerCase()]
-            ? "Known demo fallback IP used because the local DNS API is not running."
-            : "Generated demo-only IP used. Run python3 app.py --web for live DNS.",
-          packets: buildPackets(domain, ip)
-        };
-      });
     }
 
     async function resolveDomains(domains) {
@@ -849,11 +812,11 @@
             }
           }
         } catch {
-          // Browser demo fallback is handled below.
+          // Show an explicit server message below.
         }
       }
 
-      return buildDemoResults(domains);
+      throw new Error("Start the Python server with: python3 app.py --web");
     }
 
     function renderPacketDetail(packet) {
@@ -885,8 +848,8 @@
 
     function renderComparison(results) {
       document.querySelector("#comparisonGrid").innerHTML = results.map((result) => {
-        return `<article class="comparison-card ${result.isLive ? "live" : "demo"}">
-          <span>${result.isLive ? "Live DNS" : "Demo Mode"}</span>
+        return `<article class="comparison-card ${result.isLive ? "live" : "error"}">
+          <span>${result.isLive ? "Live DNS Lookup" : "DNS Lookup Failed"}</span>
           <strong>${escapeHtml(result.domain)}</strong>
           <code>${escapeHtml(result.ip)}</code>
           <p>${escapeHtml(result.note || "")}</p>
@@ -897,7 +860,28 @@
     async function simulate() {
       const domainInput = document.querySelector("#domain");
       const domains = splitDomainInputs(domainInput.value || "google.com");
-      currentResults = await resolveDomains(domains);
+      try {
+        currentResults = await resolveDomains(domains);
+      } catch (error) {
+        currentResults = [];
+        currentPackets = [];
+        activePacketKey = "";
+        domainInput.value = domains.join(", ");
+        document.querySelector("#serverIp").textContent = "Waiting for DNS";
+        document.querySelector("#summary").textContent = error.message;
+        document.querySelector("#comparisonGrid").innerHTML =
+          `<article class="comparison-card error">
+            <span>Server Required</span>
+            <strong>Live DNS unavailable</strong>
+            <code>python3 app.py --web</code>
+            <p>Open http://127.0.0.1:8000/ after starting the server. Static file mode cannot perform real DNS lookup in the browser.</p>
+          </article>`;
+        document.querySelector("#flowText").textContent = "Start the Python server to run the live DNS and TCP visualization";
+        document.querySelector("#timeline").innerHTML = "";
+        document.querySelector("#packetRows").innerHTML = "";
+        document.querySelector("#packetDetail").innerHTML = "";
+        return;
+      }
       currentPackets = currentResults.flatMap((result) => {
         return result.packets.map((packet) => ({
           ...packet,
@@ -911,7 +895,7 @@
       domainInput.value = domains.join(", ");
       renderComparison(currentResults);
 
-      const lookupMode = currentResults.every((result) => result.isLive) ? "Live DNS" : "Demo fallback available";
+      const lookupMode = currentResults.every((result) => result.isLive) ? "Live DNS Lookup" : "DNS lookup issue";
       const summaryParts = currentResults.map((result) => `${result.domain} -> ${result.ip}`);
 
       document.querySelector("#serverIp").textContent = firstResult.ip;

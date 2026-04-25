@@ -25,15 +25,6 @@ except ModuleNotFoundError:
 CLIENT_IP = "192.168.1.100"
 DNS_SERVER_IP = "8.8.8.8"
 DEFAULT_DOMAIN = "google.com"
-FALLBACK_IPS = {
-    "google.com": "142.250.185.46",
-    "www.google.com": "142.250.185.46",
-    "example.com": "93.184.216.34",
-    "github.com": "140.82.112.3",
-    "openai.com": "104.18.33.45",
-    "youtube.com": "142.250.185.46",
-}
-
 PROJECT_DIR = Path(__file__).resolve().parent
 
 
@@ -86,13 +77,9 @@ def resolve_domain(domain: str) -> tuple[str, bool, str]:
         if addresses:
             return addresses[0], True, "Live DNS lookup completed successfully."
     except socket.gaierror as exc:
-        fallback = FALLBACK_IPS.get(clean_domain)
-        if fallback:
-            return fallback, False, f"DNS lookup failed, so demo fallback IP was used: {exc}."
         return "0.0.0.0", False, f"DNS lookup failed: {exc}."
 
-    fallback = FALLBACK_IPS.get(clean_domain, "0.0.0.0")
-    return fallback, False, "No DNS address returned, so demo fallback IP was used."
+    return "0.0.0.0", False, "No DNS address returned by the resolver."
 
 
 def build_packets(domain: str, server_ip: str) -> list[Packet]:
@@ -207,7 +194,7 @@ def render_cli(domain: str) -> int:
         print(f"Client IP    : {CLIENT_IP}")
         print(f"DNS Server   : {DNS_SERVER_IP}")
         print(f"Web Server IP: {result['ip']}")
-        print(f"Lookup Type  : {'Live DNS' if result['isLive'] else 'Demo fallback'}")
+        print(f"Lookup Type  : {'Live DNS' if result['isLive'] else 'DNS unavailable'}")
         print(f"Note         : {result['note']}")
         print()
         print(format_packet_table(packets))
@@ -337,7 +324,7 @@ class PacketJourneyApp:
         server_ip, is_live, note = resolve_domain(domain)
         self.packets = build_packets(domain, server_ip)
 
-        lookup_label = "Live DNS" if is_live else "Demo fallback"
+        lookup_label = "Live DNS" if is_live else "DNS unavailable"
         self.summary_var.set(
             f"Client {CLIENT_IP} resolves {domain} using DNS server {DNS_SERVER_IP}, then connects to {server_ip} on TCP port 443."
         )
@@ -435,7 +422,7 @@ def run_web_server(port: int, open_browser: bool) -> int:
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Visualize DNS resolution and TCP connection packets.")
     parser.add_argument("--cli", action="store_true", help="Run in terminal mode instead of opening the GUI.")
-    parser.add_argument("--web", action="store_true", help="Run the browser UI with a local DNS API.")
+    parser.add_argument("--web", action="store_true", help="Run the browser UI with live DNS lookup support.")
     parser.add_argument("--port", type=int, default=8000, help="Port for --web mode.")
     parser.add_argument("--no-open", action="store_true", help="Do not open the browser automatically in --web mode.")
     parser.add_argument("--domain", default=DEFAULT_DOMAIN, help="Domain name to resolve and simulate.")
